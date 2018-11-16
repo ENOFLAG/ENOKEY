@@ -49,7 +49,7 @@ lazy_static! {
     });
 }
 
-struct Config {
+pub struct Config {
     filename: Option<String>,
     authorized_keys: Option<String>
 }
@@ -129,7 +129,7 @@ fn write_authorized_keys(cfg: &Config) -> Result<(), EnokeysError>{
             let mut auth_contents = String::new();
             authorized_keysfile.read_to_string(&mut auth_contents)?;
             authorized_keysfile.unlock()?;
-            deploy::deploy(auth_contents);
+            deploy::deploy(cfg, &auth_contents);
         }
     }
     Ok(())
