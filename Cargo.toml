@@ -1,0 +1,16 @@
+[package]
+name = "enokeys"
+version = "0.1.0"
+authors = ["Frederick Hirsch <fsck@legit.solutions>"]
+
+[dependencies]
+rocket = "*"
+rocket_codegen = "*"
+openssh-keys = "0.3.*"
+fs2 = "*"
+base64 = "*"
+regex = "*"
+lazy_static = "1.0"
+getopts = "0.2"
+reqwest = "*"
+ssh2 = "*"

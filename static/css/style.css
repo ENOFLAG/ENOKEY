@@ -1,0 +1,19 @@
+h1 {
+    background-color: green;
+    color: white;
+}
+p {
+    text-align: center;
+    color: green;
+}
+.reveal-if-active {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+input[type="checkbox"]:checked ~ .reveal-if-active,
+input[type="radio"]:checked ~ .reveal-if-active {
+  opacity: 1;
+  max-height: 100px; /* little bit of a magic number :( */
+  overflow: visible;
+}
