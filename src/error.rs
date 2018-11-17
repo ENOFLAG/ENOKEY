@@ -1,27 +1,19 @@
-use std::fmt::Debug;
-use std::fmt::Formatter;
-use std::fmt::Error;
-
+#[derive(Debug)]
 pub enum EnokeysError {
     IOError(std::io::Error),
-    ReqwestError,
-    InvalidData(String)
+    ReqwestError(reqwest::Error),
+    InvalidData(String),
+    InvalidProviderError(String)
 }
 
 impl From<reqwest::Error> for EnokeysError {
-    fn from(_: reqwest::Error) -> Self {
-        unimplemented!()
+    fn from(error: reqwest::Error) -> Self {
+        EnokeysError::ReqwestError(error)
     }
 }
 
 impl From<std::io::Error> for EnokeysError {
-    fn from(_: std::io::Error) -> Self {
-        unimplemented!()
-    }
-}
-
-impl Debug for EnokeysError {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        unimplemented!()
+    fn from(error: std::io::Error) -> Self {
+        EnokeysError::IOError(error)
     }
 }

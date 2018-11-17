@@ -235,8 +235,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "enokeys"
-version = "0.1.0"
+name = "enokey"
+version = "0.1.1"
 dependencies = [
  "base64 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "fs2 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
