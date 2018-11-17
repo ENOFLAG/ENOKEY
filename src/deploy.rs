@@ -5,7 +5,7 @@ use std::io::Write;
 use Config;
 
 
-pub fn deploy(cfg: &Config, content: &str) {
+pub fn deploy(_cfg: &Config, content: &str) {
     let tcp = TcpStream::connect("localhost:22").unwrap();
     let mut sess = Session::new().unwrap();
     sess.handshake(&tcp).unwrap();

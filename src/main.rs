@@ -108,7 +108,7 @@ fn write_authorized_keys(cfg: &Config) -> Result<(), EnokeysError>{
                     "gitlab" => scraper::fetch_gitlab(foo[1])?,
                     "enolab" => scraper::fetch_enolab(foo[1])?,
                     "tublab" => scraper::fetch_tublab(foo[1])?,
-                    _=> panic!()
+                    _=> return Err(EnokeysError::InvalidProviderError(foo[0].to_string()))
                 };
                 for key2 in user_keys {
                     match PublicKey::parse(&key2) {
