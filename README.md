@@ -1,14 +1,14 @@
-# ENOKEYS
+# ENOKEY
 
-This is the ENOKEYS repository for handling ssh keys. It contains the following tools:
+This is the ENOKEY project for handling ssh keys. It contains the following tools:
 
-* enokeys - Collect, Generate and Distribute an authorized_keys from user input over a web interface
+* enokey - Collect, Generate and Distribute an authorized_keys from user input over a webservice
 
 
 # Usage
 ```
-$ ./enokeys --help
-Usage: target/debug/enokeys [options]
+$ ./enokey --help
+Usage: target/debug/enokey [options]
 
 Options:
     -s, --storage ENOKEYS.storage

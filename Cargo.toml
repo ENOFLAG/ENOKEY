@@ -1,6 +1,6 @@
 [package]
-name = "enokeys"
-version = "0.1.0"
+name = "enokey"
+version = "0.1.1"
 authors = ["Frederick Hirsch <fsck@legit.solutions>"]
 
 [dependencies]
