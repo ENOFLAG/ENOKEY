@@ -4,7 +4,8 @@ pub enum EnokeysError {
     ReqwestError(reqwest::Error),
     Ssh2Error(ssh2::Error),
     InvalidData(String),
-    InvalidProviderError(String)
+    InvalidProviderError(String),
+    InvalidProviderResponse
 }
 
 impl From<ssh2::Error> for EnokeysError {

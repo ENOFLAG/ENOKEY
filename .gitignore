@@ -9,3 +9,6 @@ ructfe.list
 *.iml
 *.storage
 /target
+/.cache
+*.png
+*.dot

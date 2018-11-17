@@ -47,6 +47,7 @@ fn save_authorized_key_file(destination: &Destination) -> Result<(String), Enoke
         let entry = line.split(':').collect::<Vec<&str>>();
         let user_keys = scraper::fetch(entry[1], entry[0])?;
         for key in user_keys {
+            println!("parsing key: {}", &key);
             match PublicKey::parse(&key) {
                 Ok(key) => {
                     match &key.comment {
@@ -59,7 +60,7 @@ fn save_authorized_key_file(destination: &Destination) -> Result<(String), Enoke
                         None => writeln!(authorized_keys_file, "{} {}", key.keytype(), base64::encode(&key.data()))?
                     }
                 },
-                Err(e) => println!("{:?}", e)
+                Err(e) => println!("Failed to parse PublicKey: {:?}", e)
             }
         }
     }
