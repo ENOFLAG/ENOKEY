@@ -61,7 +61,7 @@ pub struct Context {
 
 #[derive(Debug,PartialEq)]
 enum FormOption {
-    GitHub, Tubit, GitLab, PubKey
+    GitHub, Tubit, GitLab
 }
 
 impl<'v> FromFormValue<'v> for FormOption {
@@ -72,7 +72,6 @@ impl<'v> FromFormValue<'v> for FormOption {
             "GitHub" => FormOption::GitHub,
             "Tubit" => FormOption::Tubit,
             "GitLab" => FormOption::GitLab,
-            "PubKey" => FormOption::PubKey,
             _ => return Err(v)
         };
         Ok(variant)
