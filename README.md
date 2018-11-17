@@ -1,5 +1,7 @@
 # ENOKEY
 
+[![](https://tokei.rs/b1/github/ENOFLAG/ENOKEY)](https://github.com/ENOFLAG/ENOKEY).
+
 This is the ENOKEY project for handling ssh keys. It contains the following tools:
 
 * enokey - Collect, Generate and Distribute an authorized_keys from user input over a webservice
