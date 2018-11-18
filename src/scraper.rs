@@ -5,10 +5,10 @@ use std::io::Read;
 
 use error::EnokeysError;
 
-const GITHUB: &'static str = "github";
-const GITLAB: &'static str = "gitlab";
-const TUBLAB: &'static str = "tublab";
-const ENOLAB: &'static str = "enolab";
+const GITHUB: &str = "github";
+const GITLAB: &str = "gitlab";
+const TUBLAB: &str = "tublab";
+const ENOLAB: &str = "enolab";
 
 pub fn fetch(user: &str, provider: &str) -> Result<Vec<String>, EnokeysError> {
     let url = get_url(&user, &provider)?;
@@ -39,7 +39,7 @@ fn get_url(user: &str, provider: &str) -> Result<String, EnokeysError> {
     }
 }
 
-fn save_to_cache(user: &str, provider: &str, keys: &Vec<String>) {
+fn save_to_cache(user: &str, provider: &str, keys: &[String]) {
     println!("Saving keys of {}@{} to cache", &user, &provider);
     fs::create_dir_all(format!("./.cache/{}", &provider)).unwrap();
     if let Ok(mut file) = File::create(format!("./.cache/{}/{}", &provider, &user)) {

@@ -115,6 +115,11 @@ fn handle_post(form: Result<Form<FormInput>, Option<String>>) -> content::Html<S
                     Ok(_) => format!("<b>SUCCESS added gitlab user {:?}</b>", &fin.gitlab_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
+            } else if fin.radio == FormOption::PubKey {
+                match storage::handle_raw_submission(&fin.name, &fin.pub_key, &config.default_destination) {
+                    Ok(_) => format!("<b>SUCCESS added raw pubkey {}", &fin.pub_key),
+                    Err(e) => format!("ERROR: {:?}", e)
+                }
             } else {
                 format!("ERROR: {:?}", form.get())
             }
