@@ -1,14 +1,17 @@
-authorized_keys
-*authorized_keys
-*.config
-webservice/target
-webservice/.idea
-authorized_keys
-ructfe.list
-**/*.rs.bk
-*.iml
+# ENOKEY files
+*.authorized_keys
+*.raw
 *.storage
+*.cache
+
+# Cargo
 /target
-/.cache
+
+# IntelliJ
+/.idea
+*.iml
+
+# general
+**/*.rs.bk
 *.png
 *.dot

@@ -15,12 +15,12 @@ use Destination;
 
 pub fn handle_raw_submission(name: &str, pub_key: &str, destination: &Destination) -> Result<(), EnokeysError> {
     let name = USERNAME_REGEX.replace_all(name, " ");
-    let storage_file = OpenOptions::new()
+    let raw_storage_file = OpenOptions::new()
         .write(true)
         .create(true)
         .append(true)
-        .open(format!(".cache/{}.raw", destination.storage_file_name))?;
-    writeln!(&storage_file, "{} {}@raw", &pub_key, &name)?;
+        .open(format!("{}.storage.raw", destination.destination_name))?;
+    writeln!(&raw_storage_file, "{} {}@raw", &pub_key, &name)?;
     let key_file_content = save_authorized_key_file(&destination)?;
     deploy::deploy(&key_file_content, &destination)?;
     Ok(())
@@ -43,7 +43,7 @@ fn save_storage(provider: &str, user_name: &str, name: &str, destination: &Desti
             .write(true)
             .create(true)
             .append(true)
-            .open(&destination.storage_file_name)?;
+            .open(format!("{}.storage", &destination.destination_name))?;
     let line = format!("# {} \n{}:{}\n", &name, provider, &user_name);
     println!("Adding entry:\n{}", &line);
     write!(storage_file, "{}", &line)?;
@@ -51,14 +51,18 @@ fn save_storage(provider: &str, user_name: &str, name: &str, destination: &Desti
 }
 
 fn save_authorized_key_file(destination: &Destination) -> Result<(String), EnokeysError> {
-    let mut authorized_keys_file = File::create(&destination.authorized_keys_file_name)?;
+    let mut authorized_keys_file = File::create(format!("{}.authorized_keys", &destination.destination_name))?;
     let mut authorized_keys_file_content = String::new();
-    let mut storage_file = File::open(&destination.storage_file_name)?;
+    let mut storage_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(format!("{}.storage", destination.destination_name))?;
     let mut storage_file_content = String::new();
 
     // append raw keys
     let mut raw_keys = String::new();
-    if let Ok(mut raw_keys_file) = File::open(format!(".cache/{}.raw", destination.storage_file_name)) {
+    if let Ok(mut raw_keys_file) = File::open(format!("{}.storage.raw", destination.destination_name)) {
         raw_keys_file.read_to_string(&mut raw_keys)?;
         authorized_keys_file_content.push_str(&raw_keys);
         write!(authorized_keys_file, "{}", &raw_keys)?

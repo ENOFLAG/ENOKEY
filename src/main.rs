@@ -42,8 +42,7 @@ lazy_static! {
         default_destination: Destination {
             address: "localhost:22".to_string(),
             userauth_agent: "root".to_string(),
-            storage_file_name: "default_destination.storage".to_string(),
-            authorized_keys_file_name: "default_destination.authorized_keys".to_string()
+            destination_name: "default_destination".to_string(),
         }
     });
 }
@@ -51,8 +50,7 @@ lazy_static! {
 pub struct Destination {
     address: String,
     userauth_agent: String,
-    storage_file_name: String,
-    authorized_keys_file_name: String
+    destination_name: String
 }
 
 pub struct Context {
