@@ -132,6 +132,11 @@ fn index() -> io::Result<NamedFile> {
     NamedFile::open("static/index.html")
 }
 
+#[get("/favicon.ico")]
+fn favicon() -> io::Result<NamedFile> {
+    NamedFile::open("static/favicon.ico")
+}
+
 #[get("/static/<file..>")]
 fn static_files(file: PathBuf) -> Option<NamedFile> {
     let allowed_files = vec!(
@@ -172,5 +177,5 @@ fn main() {
         std::process::exit(1);
     }
 
-    rocket::ignite().mount("/", routes![static_files, index, handle_post]).launch();
+    rocket::ignite().mount("/", routes![static_files, index, handle_post, favicon]).launch();
 }
