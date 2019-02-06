@@ -1,7 +1,6 @@
-#![feature(plugin, decl_macro, custom_derive)]
-#![plugin(rocket_codegen)]
+#![feature(proc_macro_hygiene, decl_macro)]
 
-extern crate rocket;
+#[macro_use] extern crate rocket;
 extern crate getopts;
 extern crate base64;
 extern crate regex;
@@ -23,7 +22,7 @@ use std::sync::Mutex;
 use std::path::Path;
 use std::path::PathBuf;
 
-use rocket::request::{Form, FromFormValue};
+use rocket::request::{Form, FromFormValue, FormError};
 use rocket::response::NamedFile;
 use rocket::http::RawStr;
 use rocket::response::content;
@@ -93,37 +92,35 @@ struct FormInput {
 }
 
 #[post("/", data = "<form>")]
-fn handle_post(form: Result<Form<FormInput>, Option<String>>) -> content::Html<String> {
+fn handle_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String> {
     content::Html(match form {
         Ok(form) => {
             let config = &*CONFIG.lock().unwrap();
-            let fin = form.get();
-            if fin.radio == FormOption::GitHub {
-                match storage::handle_submission("github", &fin.github_username, &fin.name, &config.default_destination) {
-                    Ok(_) => format!("<b>SUCCESS added github user {:?}</b>", &fin.github_username),
+            if form.radio == FormOption::GitHub {
+                match storage::handle_submission("github", &form.github_username, &form.name, &config.default_destination) {
+                    Ok(_) => format!("<b>SUCCESS added github user {:?}</b>", &form.github_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
-            } else if fin.radio == FormOption::Tubit {
-                match storage::handle_submission("tubit", &fin.tubit_username, &fin.name, &config.default_destination) {
-                    Ok(_) => format!("<b>SUCCESS added tubit user {:?}</b>", &fin.tubit_username),
+            } else if form.radio == FormOption::Tubit {
+                match storage::handle_submission("tubit", &form.tubit_username, &form.name, &config.default_destination) {
+                    Ok(_) => format!("<b>SUCCESS added tubit user {:?}</b>", &form.tubit_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
-            } else if fin.radio == FormOption::GitLab {
-                match storage::handle_submission("gitlab", &fin.gitlab_username, &fin.name, &config.default_destination) {
-                    Ok(_) => format!("<b>SUCCESS added gitlab user {:?}</b>", &fin.gitlab_username),
+            } else if form.radio == FormOption::GitLab {
+                match storage::handle_submission("gitlab", &form.gitlab_username, &form.name, &config.default_destination) {
+                    Ok(_) => format!("<b>SUCCESS added gitlab user {:?}</b>", &form.gitlab_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
-            } else if fin.radio == FormOption::PubKey {
-                match storage::handle_raw_submission(&fin.name, &fin.pub_key, &config.default_destination) {
-                    Ok(_) => format!("<b>SUCCESS added raw pubkey {}", &fin.pub_key),
+            } else if form.radio == FormOption::PubKey {
+                match storage::handle_raw_submission(&form.name, &form.pub_key, &config.default_destination) {
+                    Ok(_) => format!("<b>SUCCESS added raw pubkey {}", &form.pub_key),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else {
-                format!("ERROR: {:?}", form.get())
+                format!("ERROR: {:?}", form)
             }
         },
-        Err(Some(f)) => format!("Invalid form input: {}", f),
-        Err(None) => "Form input was invalid UTF8.".to_string(),
+        Err(e) => format!("Invalid form input: {:?}", e)
     })
 }
 

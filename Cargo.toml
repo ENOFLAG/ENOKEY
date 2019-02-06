@@ -1,11 +1,10 @@
 [package]
 name = "enokey"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Frederick Hirsch <fsck@legit.solutions>"]
 
 [dependencies]
-rocket = "*"
-rocket_codegen = "*"
+rocket = "0.4"
 openssh-keys = "0.3.*"
 base64 = "*"
 regex = "*"
