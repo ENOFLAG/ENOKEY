@@ -1,6 +1,7 @@
 #[derive(Debug)]
 pub enum EnokeysError {
     IOError(std::io::Error),
+    InvalidEnvironmentError,
     ReqwestError(reqwest::Error),
     Ssh2Error(ssh2::Error),
     InvalidData(String),
