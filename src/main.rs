@@ -1,6 +1,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 #[macro_use] extern crate rocket;
+extern crate rocket_contrib;
 extern crate getopts;
 extern crate base64;
 extern crate regex;
@@ -21,11 +22,13 @@ use std::io;
 use std::sync::Mutex;
 use std::path::Path;
 use std::path::PathBuf;
+use std::collections::HashMap;
 
 use rocket::request::{Form, FromFormValue, FormError};
 use rocket::response::NamedFile;
 use rocket::http::RawStr;
 use rocket::response::content;
+use rocket_contrib::templates::Template;
 
 use getopts::Options;
 use regex::Regex;
@@ -38,14 +41,14 @@ fn print_usage(program: &str, opts: &Options) {
 lazy_static! {
     static ref USERNAME_REGEX: Regex = Regex::new(r"[^A-Za-z0-9\.@!-_]").unwrap();
     static ref CONFIG: Mutex<Context> = Mutex::new(Context {
-        default_destination: Destination {
-            address: "localhost:22".to_string(),
-            userauth_agent: "root".to_string(),
-            destination_name: "default_destination".to_string(),
-        }
+        admin_destinations: vec!(),
+        user_destinations: vec!(),
+        admin_psk: "default".to_string(),
+        user_psk: "default".to_string()
     });
 }
 
+#[derive(Clone, Debug)]
 pub struct Destination {
     address: String,
     userauth_agent: String,
@@ -53,7 +56,10 @@ pub struct Destination {
 }
 
 pub struct Context {
-    default_destination: Destination
+    admin_destinations: Vec<Destination>,
+    user_destinations: Vec<Destination>,
+    admin_psk: String,
+    user_psk: String
 }
 
 #[derive(Debug,PartialEq)]
@@ -89,30 +95,44 @@ struct FormInput {
     gitlab_username: String,
     #[form(field = "sshpublic")]
     pub_key: String,
+    authkey: String
+}
+
+#[derive(Debug, FromForm)]
+struct DeployInput {
+    authkey: String
 }
 
 #[post("/", data = "<form>")]
-fn handle_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String> {
+fn index_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String> {
     content::Html(match form {
         Ok(form) => {
             let config = &*CONFIG.lock().unwrap();
+            let destinations = if &form.authkey == &config.user_psk {
+                &config.user_destinations
+            } else if &form.authkey == &config.admin_psk {
+                &config.admin_destinations
+            } else {
+                return content::Html(format!("Wrong AUTHKEY: {:?}", form))
+            };
+            println!("authkey {} {:?}",&form.authkey, &destinations);
             if form.radio == FormOption::GitHub {
-                match storage::handle_submission("github", &form.github_username, &form.name, &config.default_destination) {
+                match storage::handle_submission("github", &form.github_username, &form.name, destinations) {
                     Ok(_) => format!("<b>SUCCESS added github user {:?}</b>", &form.github_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::Tubit {
-                match storage::handle_submission("tubit", &form.tubit_username, &form.name, &config.default_destination) {
+                match storage::handle_submission("tubit", &form.tubit_username, &form.name, destinations) {
                     Ok(_) => format!("<b>SUCCESS added tubit user {:?}</b>", &form.tubit_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::GitLab {
-                match storage::handle_submission("gitlab", &form.gitlab_username, &form.name, &config.default_destination) {
+                match storage::handle_submission("gitlab", &form.gitlab_username, &form.name, destinations) {
                     Ok(_) => format!("<b>SUCCESS added gitlab user {:?}</b>", &form.gitlab_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::PubKey {
-                match storage::handle_raw_submission(&form.name, &form.pub_key, &config.default_destination) {
+                match storage::handle_raw_submission(&form.name, &form.pub_key, destinations) {
                     Ok(_) => format!("<b>SUCCESS added raw pubkey {}", &form.pub_key),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
@@ -125,8 +145,36 @@ fn handle_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String
 }
 
 #[get("/")]
-fn index() -> io::Result<NamedFile> {
+fn index_get() -> io::Result<NamedFile> {
     NamedFile::open("static/index.html")
+}
+
+#[post("/deploy", data = "<form>")]
+fn deploy_post(form: Result<Form<DeployInput>, FormError>) -> content::Html<String> {
+    content::Html(match form {
+        Ok(form) => {
+            let config = &*CONFIG.lock().unwrap();
+            if &form.authkey != &config.admin_psk {
+                return content::Html(format!("Wrong AUTHKEY: {:?}", form))
+            };
+            let admin_result = deploy::deploy(&config.admin_destinations);
+            let user_result = deploy::deploy(&config.user_destinations);
+            format!("deployed admin: {:?}\n<br/>\ndeployed user: {:?}", admin_result, user_result)
+        },
+        Err(e) => format!("Invalid form input: {:?}", e)
+    })
+}
+
+#[get("/deploy")]
+fn deploy_get() -> Template {
+    let config = &*CONFIG.lock().unwrap();
+    storage::generate_authorized_key_files(&config.admin_destinations).unwrap();
+    let mut context = HashMap::new();
+    let foo: Vec<String> = config.admin_destinations
+        .iter()
+        .map(|a| a.destination_name.to_string()).collect();
+    context.insert("foo", foo);
+    Template::render("deploy", &context)
 }
 
 #[get("/favicon.ico")]
@@ -150,6 +198,14 @@ fn static_files(file: PathBuf) -> Option<NamedFile> {
     None
 }
 
+#[get("/keyfiles/<file..>")]
+fn key_files(file: PathBuf) -> Option<NamedFile> {
+    if let Some(file) = file.to_str() {
+        return NamedFile::open(Path::new("keyfiles/").join(file)).ok()
+    }
+    None
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
@@ -159,8 +215,8 @@ fn main() {
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
-        Err(f) => {
-            println!("failed to parse cmd arguments ({})", f);
+        Err(e) => {
+            println!("failed to parse cmd arguments ({})", e);
             return;
         }
     };
@@ -174,5 +230,76 @@ fn main() {
         std::process::exit(1);
     }
 
-    rocket::ignite().mount("/", routes![static_files, index, handle_post, favicon]).launch();
+    let admin_env = match env::var("SERVER_ADMIN") {
+        Ok(admin) => parse_destinations(&admin),
+        Err(e) => {
+            println!("Warning: SERVER_ADMIN not set. ({})", e);
+            Ok(vec!())
+        }
+    };
+
+    let user_env = match env::var("SERVER_USER") {
+        Ok(admin) => parse_destinations(&admin),
+        Err(e) => {
+            println!("Warning: SERVER_USER not set. ({})", e);
+            Ok(vec!())
+        }
+    };
+
+    {
+        let config = &mut *CONFIG.lock().unwrap();
+        config.user_destinations = match user_env {
+            Ok(user_env) => user_env.clone(),
+            Err(e) => {
+                println!("Could not parse SERVER_USER {:?}", e);
+                return;
+            }
+        };
+
+        config.admin_destinations = match admin_env {
+            Ok(admin_env) => admin_env.clone(),
+            Err(e) => {
+                println!("Could not parse SERVER_ADMIN {:?}", e);
+                return;
+            }
+        };
+
+        config.admin_destinations.extend(config.user_destinations.iter().cloned());
+
+        config.user_psk = env::var("PSK_USER").unwrap_or_else(|e|{
+            println!("Warning: PSK_USER not set. {:?}", e);
+            "default".to_string()
+        });
+
+        config.admin_psk = env::var("PSK_ADMIN").unwrap_or_else(|e|{
+            println!("Warning: PSK_ADMIN not set. {:?}",e);
+            "default".to_string()
+        });
+    }
+
+
+
+    rocket::ignite()
+        .mount("/", routes![static_files, index_post, index_get, deploy_get, deploy_post, favicon, key_files])
+        .attach(Template::fairing())
+        .launch();
+}
+
+fn parse_destinations(input: &str) -> Result<Vec<Destination>, EnokeysError> {
+    let entries : Vec<&str> = input.split(",").collect();
+    println!("{:?}",&entries);
+    let mut destinations = vec!();
+    for entry in entries {
+        let split : Vec<&str>= entry.split("@").collect();
+        let (userauth_agent, address) = match split.len() {
+            2 => (split[0], split[1]),
+            _ => return Err(EnokeysError::InvalidEnvironmentError)
+        };
+        destinations.push(Destination{
+            address: address.to_string(),
+            userauth_agent: userauth_agent.to_string(),
+            destination_name: entry.to_string()
+        })
+    }
+    Ok(destinations)
 }

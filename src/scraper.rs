@@ -41,8 +41,8 @@ fn get_url(user: &str, provider: &str) -> Result<String, EnokeysError> {
 
 fn save_to_cache(user: &str, provider: &str, keys: &[String]) {
     println!("Saving keys of {}@{} to cache", &user, &provider);
-    fs::create_dir_all(format!("./.cache/{}", &provider)).unwrap();
-    if let Ok(mut file) = File::create(format!("./.cache/{}/{}", &provider, &user)) {
+    fs::create_dir_all(format!("./.enocache/{}", &provider)).unwrap();
+    if let Ok(mut file) = File::create(format!("./.enocache/{}/{}", &provider, &user)) {
         for key in keys {
             file.write_all(key.as_bytes()).unwrap();
             file.write_all("\n".as_bytes()).unwrap();
@@ -53,7 +53,7 @@ fn save_to_cache(user: &str, provider: &str, keys: &[String]) {
 }
 
 fn fetch_from_cache(user: &str, provider: &str) -> Option<Vec<String>> {
-    if let Ok(mut file) = File::open(format!("./.cache/{}/{}", &provider, &user)) {
+    if let Ok(mut file) = File::open(format!("./.enocache/{}/{}", &provider, &user)) {
         let mut content = String::new();
         file.read_to_string(&mut content).unwrap();
         Some(content.split('\n')
