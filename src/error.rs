@@ -2,6 +2,7 @@
 pub enum EnokeysError {
     IOError(std::io::Error),
     InvalidEnvironmentError,
+    InvalidIntegerError,
     ReqwestError(reqwest::Error),
     Ssh2Error(ssh2::Error),
     InvalidData(String),
@@ -24,5 +25,11 @@ impl From<reqwest::Error> for EnokeysError {
 impl From<std::io::Error> for EnokeysError {
     fn from(error: std::io::Error) -> Self {
         EnokeysError::IOError(error)
+    }
+}
+
+impl From<std::num::ParseIntError> for EnokeysError {
+    fn from(_error: std::num::ParseIntError) -> Self {
+        EnokeysError::InvalidIntegerError
     }
 }

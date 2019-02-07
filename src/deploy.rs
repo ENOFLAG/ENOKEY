@@ -1,9 +1,4 @@
-use std::net::TcpStream;
-use ssh2::Session;
-use std::path::Path;
-use std::io::Write;
-use std::io::Read;
-use std::fs::File;
+use std::process::Command;
 
 use Destination;
 use EnokeysError;
@@ -11,15 +6,13 @@ use EnokeysError;
 
 pub fn deploy(destinations: &Vec<Destination>) -> Result<(), EnokeysError> {
     for destination in destinations {
-        let file_name = format!("keyfiles/{}.authorized_keys",destination.destination_name);
-        let mut content = vec!();
-        File::open(file_name)?.read_to_end(&mut content)?;
-        let tcp = TcpStream::connect(&destination.address)?;
-        let mut sess = Session::new().unwrap();
-        sess.handshake(&tcp)?;
-        sess.userauth_agent(&destination.userauth_agent)?;
-        let mut remote_file = sess.scp_send(Path::new("~/.ssh/authorized_keys"), 0o644, content.len() as u64, None)?;
-        remote_file.write_all(&content)?;
+        let file_name = format!("keyfiles/{}.authorized_keys",destination.authorized_keys_file_name);
+        Command::new("scp")
+            .args(&["-i", "./data/id_ed25519",
+                "-P", &format!("{}", destination.port),
+                "-o", "StrictHostKeyChecking=no",
+                &file_name, &format!("{}@{}:/home/{}/.ssh/authorized_keys", &destination.userauth_agent, &destination.address, &destination.userauth_agent)])
+            .status()?;
     }
     Ok(())
 }

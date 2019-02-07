@@ -13,7 +13,7 @@ services:
       - ROCKET_ENV=production
       - ROCKET_LOG=normal
       - ROCKET_SECRET_KEY=whs/vijJnEoWN9Xgf25oJDn2yUtvsNuhm0eMNxZe6CI=
-      - SERVER_ADMIN=root@vulnbox,root@vmhost
+      - SERVER_ADMIN=benni@benni.stronk.pw:8022
       - PSK_ADMIN=HIGHLYSECRET
-      - SERVER_USER=user@sshfs,user@computeslave,root@vulnbox
+      - SERVER_USER=
       - PSK_USER=NOTSOSECRET

@@ -3,6 +3,8 @@
 *.raw
 *.storage
 *.cache
+*.code-workspace
+/data
 
 # Cargo
 /target
