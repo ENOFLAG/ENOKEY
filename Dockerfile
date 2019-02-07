@@ -26,7 +26,7 @@ WORKDIR /enokey
 RUN mkdir keyfiles
 
 RUN apt-get update \
-    && apt-get install -y libssl1.1 ca-certificates --no-install-recommends \
+    && apt-get install -y libssl1.1 ca-certificates openssh-client --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /service/enokey/target/debug/enokey .
@@ -36,4 +36,7 @@ COPY ./Rocket.toml ./Rocket.toml
 ENV ROCKET_ENV production
 ENV ROCKET_TEMPLATE_DIR static
 
+RUN adduser --disabled-password --gecos '' enokey
+RUN chown -R enokey .
+USER enokey
 ENTRYPOINT "./enokey"

@@ -3,6 +3,9 @@
 *.raw
 *.storage
 *.cache
+*.code-workspace
+/data
+*.yml
 
 # Cargo
 /target

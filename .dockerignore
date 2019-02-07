@@ -1,4 +1,10 @@
 .dockerignore
-*.yml
+.gitignore
+Dockerfile
+
 .git
 target
+data
+
+*.code-workspace
+*.yml

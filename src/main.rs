@@ -52,7 +52,11 @@ lazy_static! {
 pub struct Destination {
     address: String,
     userauth_agent: String,
-    destination_name: String
+    destination_name: String,
+    authorized_keys_file_name: PathBuf,
+    raw_storage_file_name: PathBuf,
+    providers_storage_file_name: PathBuf,
+    port: u16
 }
 
 pub struct Context {
@@ -170,10 +174,10 @@ fn deploy_get() -> Template {
     let config = &*CONFIG.lock().unwrap();
     storage::generate_authorized_key_files(&config.admin_destinations).unwrap();
     let mut context = HashMap::new();
-    let dest_names: Vec<String> = config.admin_destinations
+    let destinations: Vec<String> = config.admin_destinations
         .iter()
-        .map(|a| a.destination_name.to_string()).collect();
-    context.insert("dest_names", dest_names);
+        .map(|a| a.authorized_keys_file_name.to_str().unwrap().to_string()).collect();
+    context.insert("destinations", destinations);
     Template::render("deploy", &context)
 }
 
@@ -275,9 +279,9 @@ fn main() {
             println!("Warning: PSK_ADMIN not set. {:?}",e);
             "default".to_string()
         });
+
+        storage::load_deploy_keypair().unwrap();
     }
-
-
 
     rocket::ignite()
         .mount("/", routes![static_files, index_post, index_get, deploy_get, deploy_post, favicon, key_files])
@@ -286,7 +290,10 @@ fn main() {
 }
 
 fn parse_destinations(input: &str) -> Result<Vec<Destination>, EnokeysError> {
-    let entries : Vec<&str> = input.split(',').collect();
+    if input == "" {
+        return Ok(vec!())
+    }
+    let entries : Vec<&str> = input.split(",").collect();
     println!("{:?}",&entries);
     let mut destinations = vec!();
     for entry in entries {
@@ -295,11 +302,25 @@ fn parse_destinations(input: &str) -> Result<Vec<Destination>, EnokeysError> {
             2 => (split[0], split[1]),
             _ => return Err(EnokeysError::InvalidEnvironmentError)
         };
-        destinations.push(Destination{
+        let port = parse_port(address)?;
+        let address = address.split(":").collect::<Vec<&str>>()[0];
+        destinations.push(Destination {
             address: address.to_string(),
             userauth_agent: userauth_agent.to_string(),
-            destination_name: entry.to_string()
+            destination_name: format!("{}@{}:{}", &userauth_agent, &address, port),
+            authorized_keys_file_name: PathBuf::from(format!("./keyfiles/{}@{}_{}.authorized_keys", &userauth_agent, &address, port)),
+            raw_storage_file_name: PathBuf::from(format!("./keyfiles/{}@{}_{}.authorized_keys.raw", &userauth_agent, &address, port)),
+            providers_storage_file_name: PathBuf::from(format!("./keyfiles/{}@{}_{}.authorized_keys.providers", &userauth_agent, &address, port)),
+            port: port
         })
     }
     Ok(destinations)
+}
+
+fn parse_port(address: &str) -> Result<u16, EnokeysError> {
+    let split = address.split(":").collect::<Vec<&str>>();
+    if split.len() == 1 {
+        return Ok(22);
+    }
+    return Ok(split[split.len()-1].parse::<u16>()?);
 }
