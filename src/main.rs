@@ -53,7 +53,9 @@ pub struct Destination {
     address: String,
     userauth_agent: String,
     destination_name: String,
-    authorized_keys_file_name: String,
+    authorized_keys_file_name: PathBuf,
+    raw_storage_file_name: PathBuf,
+    providers_storage_file_name: PathBuf,
     port: u16
 }
 
@@ -174,7 +176,7 @@ fn deploy_get() -> Template {
     let mut context = HashMap::new();
     let destinations: Vec<String> = config.admin_destinations
         .iter()
-        .map(|a| a.authorized_keys_file_name.to_string()).collect();
+        .map(|a| a.authorized_keys_file_name.to_str().unwrap().to_string()).collect();
     context.insert("destinations", destinations);
     Template::render("deploy", &context)
 }
@@ -306,7 +308,9 @@ fn parse_destinations(input: &str) -> Result<Vec<Destination>, EnokeysError> {
             address: address.to_string(),
             userauth_agent: userauth_agent.to_string(),
             destination_name: format!("{}@{}:{}", &userauth_agent, &address, port),
-            authorized_keys_file_name: format!("{}@{}_{}", &userauth_agent, &address, port),
+            authorized_keys_file_name: PathBuf::from(format!("./keyfiles/{}@{}_{}.authorized_keys", &userauth_agent, &address, port)),
+            raw_storage_file_name: PathBuf::from(format!("./keyfiles/{}@{}_{}.authorized_keys.raw", &userauth_agent, &address, port)),
+            providers_storage_file_name: PathBuf::from(format!("./keyfiles/{}@{}_{}.authorized_keys.providers", &userauth_agent, &address, port)),
             port: port
         })
     }

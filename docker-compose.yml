@@ -17,3 +17,4 @@ services:
       - PSK_ADMIN=HIGHLYSECRET
       - SERVER_USER=
       - PSK_USER=NOTSOSECRET
+      - RUST_BACKTRACE=1
