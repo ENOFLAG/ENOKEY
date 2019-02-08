@@ -5,7 +5,8 @@ RUN USER=root cargo new --bin enokey
 WORKDIR /service/enokey
 
 RUN apt-get update \
-    && apt-get install -y libssl-dev pkg-config --no-install-recommends
+    && apt-get install -y libssl-dev pkg-config --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN rustup install nightly
 
@@ -25,7 +26,8 @@ WORKDIR /enokey
 RUN mkdir keyfiles
 
 RUN apt-get update \
-    && apt-get install -y libssl1.1 ca-certificates
+    && apt-get install -y libssl1.1 ca-certificates --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /service/enokey/target/debug/enokey .
 COPY ./static ./static
