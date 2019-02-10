@@ -9,7 +9,7 @@ use Destination;
 use EnokeysError;
 
 
-pub fn deploy(destinations: &Vec<Destination>) -> Result<(), EnokeysError> {
+pub fn deploy(destinations: &[Destination]) -> Result<(), EnokeysError> {
     for destination in destinations {
         let file_name = format!("keyfiles/{}.authorized_keys",destination.destination_name);
         let mut content = vec!();
