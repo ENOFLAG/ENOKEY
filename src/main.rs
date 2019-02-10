@@ -108,7 +108,7 @@ fn index_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String>
     content::Html(match form {
         Ok(form) => {
             let config = &*CONFIG.lock().unwrap();
-            let destinations = if &form.authkey == &config.user_psk {
+            let destinations = if form.authkey == config.user_psk {
                 &config.user_destinations
             } else if &form.authkey == &config.admin_psk {
                 &config.admin_destinations
@@ -154,7 +154,7 @@ fn deploy_post(form: Result<Form<DeployInput>, FormError>) -> content::Html<Stri
     content::Html(match form {
         Ok(form) => {
             let config = &*CONFIG.lock().unwrap();
-            if &form.authkey != &config.admin_psk {
+            if form.authkey != config.admin_psk {
                 return content::Html(format!("Wrong AUTHKEY: {:?}", form))
             };
             let admin_result = deploy::deploy(&config.admin_destinations);
@@ -170,10 +170,10 @@ fn deploy_get() -> Template {
     let config = &*CONFIG.lock().unwrap();
     storage::generate_authorized_key_files(&config.admin_destinations).unwrap();
     let mut context = HashMap::new();
-    let foo: Vec<String> = config.admin_destinations
+    let dest_names: Vec<String> = config.admin_destinations
         .iter()
         .map(|a| a.destination_name.to_string()).collect();
-    context.insert("foo", foo);
+    context.insert("dest_names", dest_names);
     Template::render("deploy", &context)
 }
 
@@ -286,11 +286,11 @@ fn main() {
 }
 
 fn parse_destinations(input: &str) -> Result<Vec<Destination>, EnokeysError> {
-    let entries : Vec<&str> = input.split(",").collect();
+    let entries : Vec<&str> = input.split(',').collect();
     println!("{:?}",&entries);
     let mut destinations = vec!();
     for entry in entries {
-        let split : Vec<&str>= entry.split("@").collect();
+        let split : Vec<&str>= entry.split('@').collect();
         let (userauth_agent, address) = match split.len() {
             2 => (split[0], split[1]),
             _ => return Err(EnokeysError::InvalidEnvironmentError)

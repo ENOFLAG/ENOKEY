@@ -12,7 +12,7 @@ use USERNAME_REGEX;
 use Destination;
 
 
-pub fn handle_raw_submission(name: &str, pub_key: &str, destinations: &Vec<Destination>) -> Result<(), EnokeysError> {
+pub fn handle_raw_submission(name: &str, pub_key: &str, destinations: &[Destination]) -> Result<(), EnokeysError> {
     for destination in destinations {
         let name = USERNAME_REGEX.replace_all(name, " ");
         let raw_storage_file = OpenOptions::new()
@@ -25,7 +25,7 @@ pub fn handle_raw_submission(name: &str, pub_key: &str, destinations: &Vec<Desti
     Ok(())
 }
 
-pub fn handle_submission(provider: &str, user_name: &str, name: &str, destinations: &Vec<Destination>) -> Result<(), EnokeysError> {
+pub fn handle_submission(provider: &str, user_name: &str, name: &str, destinations: &[Destination]) -> Result<(), EnokeysError> {
     if provider.is_empty() || user_name.is_empty() {
         return Err(EnokeysError::InvalidData("username or service empty".to_string()));
     }
@@ -44,7 +44,7 @@ pub fn handle_submission(provider: &str, user_name: &str, name: &str, destinatio
     Ok(())
 }
 
-pub fn generate_authorized_key_files(destinations: &Vec<Destination>) -> Result<(), EnokeysError> {
+pub fn generate_authorized_key_files(destinations: &[Destination]) -> Result<(), EnokeysError> {
     for destination in destinations {
         let mut authorized_keys_file = File::create(format!("./keyfiles/{}.authorized_keys", &destination.destination_name))?;
         let mut authorized_keys_file_content = String::new();
