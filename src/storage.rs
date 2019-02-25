@@ -57,7 +57,7 @@ pub fn generate_authorized_key_files(destinations: &[Destination]) -> Result<(),
         // append deploy key
         let mut deploy_key = String::new();
         // TODO: User-configable ssh key
-        if let Ok(mut deploy_key_file) = File::open("./data/id_ed25519.pub") {
+        if let Ok(mut deploy_key_file) = File::open("~/.ssh/id_ed25519.pub") {
             deploy_key_file.read_to_string(&mut deploy_key)?;
             write!(authorized_keys_file, "{}", &deploy_key)?
         }
@@ -98,7 +98,7 @@ pub fn generate_authorized_key_files(destinations: &[Destination]) -> Result<(),
 
 pub fn load_deploy_keypair() -> Result<(), EnokeysError> {
     // TODO: User-configable ssh key
-    match File::open("./data/id_ed25519") {
+    match File::open("~/.ssh/id_ed25519") {
         Ok(_) => Ok(()),
         Err(e) => Err(EnokeysError::IOError(e))
     }
