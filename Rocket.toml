@@ -1,2 +1,6 @@
 [production]
 port = 8000
+template_dir = "static"
+
+[development]
+template_dir = "static"

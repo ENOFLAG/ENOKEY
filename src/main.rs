@@ -68,7 +68,7 @@ pub struct Context {
 
 #[derive(Debug,PartialEq)]
 enum FormOption {
-    GitHub, Tubit, GitLab, PubKey
+    GitHub, Tubit, GitLab, EnoLab, PubKey
 }
 
 impl<'v> FromFormValue<'v> for FormOption {
@@ -78,6 +78,7 @@ impl<'v> FromFormValue<'v> for FormOption {
         let variant = match v.as_str() {
             "GitHub" => FormOption::GitHub,
             "Tubit" => FormOption::Tubit,
+            "EnoLab" => FormOption::EnoLab,
             "GitLab" => FormOption::GitLab,
             "PubKey" => FormOption::PubKey,
             _ => return Err(v)
@@ -97,6 +98,8 @@ struct FormInput {
     tubit_username: String,
     #[form(field = "gitlabuser")]
     gitlab_username: String,
+    #[form(field = "enolabuser")]
+    enolab_username: String,
     #[form(field = "sshpublic")]
     pub_key: String,
     authkey: String
@@ -133,6 +136,11 @@ fn index_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String>
             } else if form.radio == FormOption::GitLab {
                 match storage::handle_submission("gitlab", &form.gitlab_username, &form.name, destinations) {
                     Ok(_) => format!("<b>SUCCESS added gitlab user {:?}</b>", &form.gitlab_username),
+                    Err(e) => format!("ERROR: {:?}", e)
+                }
+            } else if form.radio == FormOption::EnoLab {
+                match storage::handle_submission("enolab", &form.enolab_username, &form.pub_key, destinations) {
+                    Ok(_) => format!("<b>SUCCESS added raw pubkey {}", &form.pub_key),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::PubKey {
