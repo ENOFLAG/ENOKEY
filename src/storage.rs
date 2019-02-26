@@ -1,3 +1,4 @@
+extern crate dirs;
 use std::io::Write;
 use std::fs::File;
 use std::fs::OpenOptions;
@@ -57,7 +58,11 @@ pub fn generate_authorized_key_files(destinations: &[Destination]) -> Result<(),
         // append deploy key
         let mut deploy_key = String::new();
         // TODO: User-configable ssh key
-        if let Ok(mut deploy_key_file) = File::open("~/.ssh/id_ed25519.pub") {
+        let mut path = dirs::home_dir().unwrap();
+        path.push(".ssh");
+        path.push("id_ed25519.pub");
+        println!("Loading SSH-pubkeyfile {:?}",path);
+        if let Ok(mut deploy_key_file) = File::open(path) {
             deploy_key_file.read_to_string(&mut deploy_key)?;
             write!(authorized_keys_file, "{}", &deploy_key)?
         }
@@ -97,8 +102,12 @@ pub fn generate_authorized_key_files(destinations: &[Destination]) -> Result<(),
 }
 
 pub fn load_deploy_keypair() -> Result<(), EnokeysError> {
+    let mut path = dirs::home_dir().unwrap();
+    path.push(".ssh");
+    path.push("id_ed25519");
+    println!("Loading SSH-keyfile {:?}",path);
     // TODO: User-configable ssh key
-    match File::open("~/.ssh/id_ed25519") {
+    match File::open(path) {
         Ok(_) => Ok(()),
         Err(e) => Err(EnokeysError::IOError(e))
     }
