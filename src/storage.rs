@@ -15,7 +15,7 @@ use Destination;
 
 pub fn handle_raw_submission(name: &str, pub_key: &str, destinations: &[Destination]) -> Result<(), EnokeysError> {
     for destination in destinations {
-        let name = USERNAME_REGEX.replace_all(name, " ");
+        let name = USERNAME_REGEX.replace_all(name, "_");
         let raw_storage_file = OpenOptions::new()
             .write(true)
             .create(true)
@@ -76,7 +76,7 @@ pub fn generate_authorized_key_files(destinations: &[Destination]) -> Result<(),
                 Ok(key) => {
                     match &key.comment {
                         Some(ref comment) => {
-                            let comment = USERNAME_REGEX.replace_all(&comment, " ");
+                            let comment = USERNAME_REGEX.replace_all(&comment, "_");
                             let line = format!("{} {} {}\n", key.keytype(), base64::encode(&key.data()), &comment[0..min(comment.len(), 100)]);
                             write!(authorized_keys_file, "{}", &line)?
                         },
@@ -99,7 +99,7 @@ pub fn generate_authorized_key_files(destinations: &[Destination]) -> Result<(),
                         match &key.comment {
                             Some(ref comment) => {
                                 let comment = USERNAME_REGEX.replace_all(&comment, " ");
-                                let line = format!("{} {} {} ({}@{})\n", key.keytype(), base64::encode(&key.data()), &comment[0..min(comment.len(), 100)], entry[1], entry[0]);
+                                let line = format!("{} {} {}_({}@{})\n", key.keytype(), base64::encode(&key.data()), &comment[0..min(comment.len(), 100)], entry[1], entry[0]);
                                 write!(authorized_keys_file, "{}", &line)?
                             },
                             None => writeln!(authorized_keys_file, "{} {}", key.keytype(), base64::encode(&key.data()))?
