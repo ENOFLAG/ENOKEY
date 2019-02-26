@@ -72,7 +72,19 @@ pub fn generate_authorized_key_files(destinations: &[Destination]) -> Result<(),
         let mut raw_keys = String::new();
         if let Ok(mut raw_keys_file) = File::open(&destination.raw_storage_file_name) {
             raw_keys_file.read_to_string(&mut raw_keys)?;
-            write!(authorized_keys_file, "{}", &raw_keys)?
+            match PublicKey::parse(&raw_keys) {
+                Ok(key) => {
+                    match &key.comment {
+                        Some(ref comment) => {
+                            let comment = USERNAME_REGEX.replace_all(&comment, " ");
+                            let line = format!("{} {} {}\n", key.keytype(), base64::encode(&key.data()), &comment[0..min(comment.len(), 100)]);
+                            write!(authorized_keys_file, "{}", &line)?
+                        },
+                        None => writeln!(authorized_keys_file, "{} {}", key.keytype(), base64::encode(&key.data()))?
+                    }
+                },
+                Err(e) => println!("Failed to parse PublicKey: {:?}", e)
+            }
         }
 
         // append keys from providers
@@ -87,7 +99,7 @@ pub fn generate_authorized_key_files(destinations: &[Destination]) -> Result<(),
                         match &key.comment {
                             Some(ref comment) => {
                                 let comment = USERNAME_REGEX.replace_all(&comment, " ");
-                                let line = format!("{} {} {}\n", key.keytype(), base64::encode(&key.data()), &comment[0..min(comment.len(), 100)]);
+                                let line = format!("{} {} {} ({}@{})\n", key.keytype(), base64::encode(&key.data()), &comment[0..min(comment.len(), 100)], entry[1], entry[0]);
                                 write!(authorized_keys_file, "{}", &line)?
                             },
                             None => writeln!(authorized_keys_file, "{} {}", key.keytype(), base64::encode(&key.data()))?
