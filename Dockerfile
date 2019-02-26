@@ -38,8 +38,10 @@ ENV ROCKET_TEMPLATE_DIR static
 
 RUN adduser --disabled-password --gecos '' enokey
 RUN mkdir /home/enokey/.ssh
+RUN chown -R enokey /home/enokey/
 RUN chown -R enokey .
+COPY /docker-entrypoint.sh /
+RUN chmod o+x /docker-entrypoint.sh
 USER enokey
-COPY ./docker-entrypoint.sh ./
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["./enokey"]
