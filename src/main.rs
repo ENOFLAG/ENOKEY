@@ -39,7 +39,7 @@ fn print_usage(program: &str, opts: &Options) {
 }
 
 lazy_static! {
-    static ref USERNAME_REGEX: Regex = Regex::new(r"[^A-Za-z0-9\.@!-_]").unwrap();
+    static ref USERNAME_REGEX: Regex = Regex::new(r"[^A-Za-z0-9\.@!\-_]").unwrap();
     static ref CONFIG: Mutex<Context> = Mutex::new(Context {
         admin_destinations: vec!(),
         user_destinations: vec!(),
@@ -130,22 +130,22 @@ fn index_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String>
                 }
             } else if form.radio == FormOption::Tubit {
                 match storage::handle_submission("tubit", &form.tubit_username, &form.name, destinations) {
-                    Ok(_) => format!("<b>SUCCESS added tubit user {:?}</b>", &form.tubit_username),
+                    Ok(_) => format!("<b>SUCCESS added tubit gitlab user {:?}</b>", &form.tubit_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::GitLab {
                 match storage::handle_submission("gitlab", &form.gitlab_username, &form.name, destinations) {
-                    Ok(_) => format!("<b>SUCCESS added gitlab user {:?}</b>", &form.gitlab_username),
+                    Ok(_) => format!("<b>SUCCESS added gitlab.com user {:?}</b>", &form.gitlab_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::EnoLab {
-                match storage::handle_submission("enolab", &form.enolab_username, &form.pub_key, destinations) {
-                    Ok(_) => format!("<b>SUCCESS added raw pubkey {}", &form.pub_key),
+                match storage::handle_submission("enolab", &form.enolab_username, &form.name, destinations) {
+                    Ok(_) => format!("<b>SUCCESS added enoflag gitlab user {:?}</b>", &form.enolab_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::PubKey {
                 match storage::handle_raw_submission(&form.name, &form.pub_key, destinations) {
-                    Ok(_) => format!("<b>SUCCESS added raw pubkey {}", &form.pub_key),
+                    Ok(_) => format!("<b>SUCCESS added raw pubkey {:?}</b>", &form.pub_key),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else {
@@ -317,8 +317,8 @@ fn parse_destinations(input: &str) -> Result<Vec<Destination>, EnokeysError> {
             userauth_agent: userauth_agent.to_string(),
             destination_name: format!("{}@{}:{}", &userauth_agent, &address, port),
             authorized_keys_file_name: PathBuf::from(format!("./keyfiles/{}@{}_{}.authorized_keys", &userauth_agent, &address, port)),
-            raw_storage_file_name: PathBuf::from(format!("./keyfiles/{}@{}_{}.authorized_keys.raw", &userauth_agent, &address, port)),
-            providers_storage_file_name: PathBuf::from(format!("./keyfiles/{}@{}_{}.authorized_keys.providers", &userauth_agent, &address, port)),
+            raw_storage_file_name: PathBuf::from(format!("./data/{}@{}_{}.authorized_keys.raw", &userauth_agent, &address, port)),
+            providers_storage_file_name: PathBuf::from(format!("./data/{}@{}_{}.authorized_keys.providers", &userauth_agent, &address, port)),
             port: port
         })
     }
