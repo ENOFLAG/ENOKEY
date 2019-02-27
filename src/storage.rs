@@ -67,7 +67,6 @@ pub fn generate_authorized_key_files(destinations: &[Destination]) -> Result<(),
             write!(authorized_keys_file, "{}", &deploy_key)?
         }
 
-
         // append raw keys
         let mut raw_keys = String::new();
         if let Ok(mut raw_keys_file) = File::open(&destination.raw_storage_file_name) {
