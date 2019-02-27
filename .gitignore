@@ -6,6 +6,7 @@
 *.code-workspace
 /data
 *.yml
+/.enocache
 
 # Cargo
 /target

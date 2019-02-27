@@ -34,7 +34,6 @@ COPY ./static ./static
 COPY ./Rocket.toml ./Rocket.toml
 
 ENV ROCKET_ENV production
-ENV ROCKET_TEMPLATE_DIR static
 
 RUN adduser --disabled-password --gecos '' enokey
 RUN mkdir /home/enokey/.ssh

@@ -29,6 +29,7 @@ use rocket::response::NamedFile;
 use rocket::http::RawStr;
 use rocket::response::content;
 use rocket_contrib::templates::Template;
+use rocket_contrib::serve::StaticFiles;
 
 use getopts::Options;
 use regex::Regex;
@@ -115,10 +116,10 @@ fn index_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String>
     content::Html(match form {
         Ok(form) => {
             let config = &*CONFIG.lock().unwrap();
-            let destinations = if form.authkey == config.user_psk {
-                &config.user_destinations
-            } else if &form.authkey == &config.admin_psk {
+            let destinations = if form.authkey == config.admin_psk {
                 &config.admin_destinations
+            } else if &form.authkey == &config.user_psk {
+                &config.user_destinations
             } else {
                 return content::Html(format!("Wrong AUTHKEY: {:?}", form))
             };
@@ -192,30 +193,6 @@ fn deploy_get() -> Template {
 #[get("/favicon.ico")]
 fn favicon() -> io::Result<NamedFile> {
     NamedFile::open("static/favicon.ico")
-}
-
-#[get("/static/<file..>")]
-fn static_files(file: PathBuf) -> Option<NamedFile> {
-    let allowed_files = vec!(
-        "css/bootstrap.min.css",
-        "css/bootstrap.min.css.map",
-        "css/style.css"
-    );
-
-    if let Some(file) = file.to_str() {
-        if allowed_files.contains(&file) {
-            return NamedFile::open(Path::new("static/").join(file)).ok();
-        }
-    }
-    None
-}
-
-#[get("/keyfiles/<file..>")]
-fn key_files(file: PathBuf) -> Option<NamedFile> {
-    if let Some(file) = file.to_str() {
-        return NamedFile::open(Path::new("keyfiles/").join(file)).ok()
-    }
-    None
 }
 
 fn main() {
@@ -292,7 +269,9 @@ fn main() {
     }
 
     rocket::ignite()
-        .mount("/", routes![static_files, index_post, index_get, deploy_get, deploy_post, favicon, key_files])
+        .mount("/static", StaticFiles::from("static"))
+        .mount("/keyfiles", StaticFiles::from("keyfiles"))
+        .mount("/", routes![index_post, index_get, deploy_get, deploy_post, favicon])
         .attach(Template::fairing())
         .launch();
 }
