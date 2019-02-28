@@ -20,7 +20,6 @@ use error::EnokeysError;
 use std::env;
 use std::io;
 use std::sync::Mutex;
-use std::path::Path;
 use std::path::PathBuf;
 use std::collections::HashMap;
 
@@ -41,6 +40,12 @@ fn print_usage(program: &str, opts: &Options) {
 
 lazy_static! {
     static ref USERNAME_REGEX: Regex = Regex::new(r"[^A-Za-z0-9\.@!\-_]").unwrap();
+    static ref USER_DESTINATIONS_STORAGE_RAW: PathBuf = PathBuf::from("./data/user.raw");
+    static ref USER_DESTINATIONS_STORAGE_PROVIDERS: PathBuf = PathBuf::from("./data/user.providers");
+    static ref USER_DESTINATIONS_AUTHORIZED_KEYS: PathBuf = PathBuf::from("./keyfiles/user.authorized_keys");
+    static ref ADMIN_DESTINATIONS_STORAGE_RAW: PathBuf = PathBuf::from("./data/admin.raw");
+    static ref ADMIN_DESTINATIONS_STORAGE_PROVIDERS: PathBuf = PathBuf::from("./data/admin.providers");
+    static ref ADMIN_DESTINATIONS_AUTHORIZED_KEYS: PathBuf = PathBuf::from("./keyfiles/admin.authorized_keys");
     static ref CONFIG: Mutex<Context> = Mutex::new(Context {
         admin_destinations: vec!(),
         user_destinations: vec!(),
@@ -54,9 +59,6 @@ pub struct Destination {
     address: String,
     userauth_agent: String,
     destination_name: String,
-    authorized_keys_file_name: PathBuf,
-    raw_storage_file_name: PathBuf,
-    providers_storage_file_name: PathBuf,
     port: u16
 }
 
@@ -116,36 +118,36 @@ fn index_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String>
     content::Html(match form {
         Ok(form) => {
             let config = &*CONFIG.lock().unwrap();
-            let destinations = if form.authkey == config.admin_psk {
-                &config.admin_destinations
+            let admin = if form.authkey == config.admin_psk {
+                true
             } else if &form.authkey == &config.user_psk {
-                &config.user_destinations
+                false
             } else {
                 return content::Html(format!("Wrong AUTHKEY: {:?}", form))
             };
-            println!("authkey {} {:?}",&form.authkey, &destinations);
+            println!("authkey {} admin={}",&form.authkey, admin);
             if form.radio == FormOption::GitHub {
-                match storage::handle_submission("github", &form.github_username, &form.name, destinations) {
+                match storage::handle_submission("github", &form.github_username, &form.name, admin) {
                     Ok(_) => format!("<b>SUCCESS added github user {:?}</b>", &form.github_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::Tubit {
-                match storage::handle_submission("tubit", &form.tubit_username, &form.name, destinations) {
+                match storage::handle_submission("tublab", &form.tubit_username, &form.name, admin) {
                     Ok(_) => format!("<b>SUCCESS added tubit gitlab user {:?}</b>", &form.tubit_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::GitLab {
-                match storage::handle_submission("gitlab", &form.gitlab_username, &form.name, destinations) {
+                match storage::handle_submission("gitlab", &form.gitlab_username, &form.name, admin) {
                     Ok(_) => format!("<b>SUCCESS added gitlab.com user {:?}</b>", &form.gitlab_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::EnoLab {
-                match storage::handle_submission("enolab", &form.enolab_username, &form.name, destinations) {
+                match storage::handle_submission("enolab", &form.enolab_username, &form.name, admin) {
                     Ok(_) => format!("<b>SUCCESS added enoflag gitlab user {:?}</b>", &form.enolab_username),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
             } else if form.radio == FormOption::PubKey {
-                match storage::handle_raw_submission(&form.name, &form.pub_key, destinations) {
+                match storage::handle_raw_submission(&form.name, &form.pub_key, admin) {
                     Ok(_) => format!("<b>SUCCESS added raw pubkey {:?}</b>", &form.pub_key),
                     Err(e) => format!("ERROR: {:?}", e)
                 }
@@ -170,8 +172,8 @@ fn deploy_post(form: Result<Form<DeployInput>, FormError>) -> content::Html<Stri
             if form.authkey != config.admin_psk {
                 return content::Html(format!("Wrong AUTHKEY: {:?}", form))
             };
-            let admin_result = deploy::deploy(&config.admin_destinations);
-            let user_result = deploy::deploy(&config.user_destinations);
+            let admin_result = deploy::deploy(&config.admin_destinations, &ADMIN_DESTINATIONS_AUTHORIZED_KEYS);
+            let user_result = deploy::deploy(&config.user_destinations, &USER_DESTINATIONS_AUTHORIZED_KEYS);
             format!("deployed admin: {:?}\n<br/>\ndeployed user: {:?}", admin_result, user_result)
         },
         Err(e) => format!("Invalid form input: {:?}", e)
@@ -181,12 +183,16 @@ fn deploy_post(form: Result<Form<DeployInput>, FormError>) -> content::Html<Stri
 #[get("/deploy")]
 fn deploy_get() -> Template {
     let config = &*CONFIG.lock().unwrap();
-    storage::generate_authorized_key_files(&config.admin_destinations).unwrap();
+    storage::generate_authorized_key_files().unwrap();
     let mut context = HashMap::new();
-    let destinations: Vec<String> = config.admin_destinations
+    let admin_destinations: Vec<String> = config.admin_destinations
         .iter()
-        .map(|a| a.authorized_keys_file_name.to_str().unwrap().to_string()).collect();
-    context.insert("destinations", destinations);
+        .map(|a| a.destination_name.to_string()).collect();
+    let user_destinations: Vec<String> = config.user_destinations
+        .iter()
+        .map(|a| a.destination_name.to_string()).collect();
+    context.insert("admin_destinations", admin_destinations);
+    context.insert("user_destinations", user_destinations);
     Template::render("deploy", &context)
 }
 
@@ -295,9 +301,6 @@ fn parse_destinations(input: &str) -> Result<Vec<Destination>, EnokeysError> {
             address: address.to_string(),
             userauth_agent: userauth_agent.to_string(),
             destination_name: format!("{}@{}:{}", &userauth_agent, &address, port),
-            authorized_keys_file_name: PathBuf::from(format!("./keyfiles/{}@{}_{}.authorized_keys", &userauth_agent, &address, port)),
-            raw_storage_file_name: PathBuf::from(format!("./data/{}@{}_{}.authorized_keys.raw", &userauth_agent, &address, port)),
-            providers_storage_file_name: PathBuf::from(format!("./data/{}@{}_{}.authorized_keys.providers", &userauth_agent, &address, port)),
             port: port
         })
     }

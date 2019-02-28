@@ -14,9 +14,16 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <a class="navbar-brand" href="/">ENOKEYS - SSH PublicKey Self-Service Center</a>
     </nav>
-    {{#each destinations}}
-        <div><a href="../{{this}}">{{this}}</a></div>
+    <h4>Admin destinations:</h4>
+    {{#each admin_destinations}}
+        <div>{{this}}</div>
     {{/each}}
+    <a href="../keyfiles/admin.authorized_keys">authorized_keys</a>
+    <h4>User destinations:</h4>
+    {{#each user_destinations}}
+        <div>{{this}}</div>
+    {{/each}}
+    <a href="../keyfiles/user.authorized_keys">authorized_keys</a>
     <div class="container">
         <div class="row">
             <div class="col-md-12">
