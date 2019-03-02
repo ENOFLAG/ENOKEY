@@ -27,6 +27,7 @@ use rocket::request::{Form, FromFormValue, FormError};
 use rocket::response::NamedFile;
 use rocket::http::RawStr;
 use rocket::response::content;
+use rocket::fairing::AdHoc;
 use rocket_contrib::templates::Template;
 use rocket_contrib::serve::StaticFiles;
 
@@ -279,6 +280,11 @@ fn main() {
         .mount("/keyfiles", StaticFiles::from("keyfiles"))
         .mount("/", routes![index_post, index_get, deploy_get, deploy_post, favicon])
         .attach(Template::fairing())
+        .attach(AdHoc::on_response("Security Headers", |_, resp| {
+            resp.adjoin_raw_header("x-xss-protection", "1");
+            resp.adjoin_raw_header("x-frame-options", "SAMEORIGIN");
+            resp.adjoin_raw_header("Content-Security-Policy", "default-src 'self'");
+        }))
         .launch();
 }
 
