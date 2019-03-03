@@ -7,7 +7,7 @@ pub enum EnokeysError {
     Ssh2Error(ssh2::Error),
     InvalidData(String),
     InvalidProviderError(String),
-    InvalidProviderResponse
+    InvalidProviderResponse,
 }
 
 impl From<ssh2::Error> for EnokeysError {

@@ -1,22 +1,22 @@
 extern crate dirs;
-use std::io::Write;
+use std::cmp::min;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::path::PathBuf;
 use std::io::Read;
-use std::cmp::min;
+use std::io::Write;
+use std::path::PathBuf;
 
 use openssh_keys::PublicKey;
 
 use error::EnokeysError;
 use scraper;
+use ADMIN_DESTINATIONS_AUTHORIZED_KEYS;
+use ADMIN_DESTINATIONS_STORAGE_PROVIDERS;
+use ADMIN_DESTINATIONS_STORAGE_RAW;
 use USERNAME_REGEX;
-use ::ADMIN_DESTINATIONS_AUTHORIZED_KEYS;
-use ::ADMIN_DESTINATIONS_STORAGE_PROVIDERS;
-use ::ADMIN_DESTINATIONS_STORAGE_RAW;
-use ::USER_DESTINATIONS_AUTHORIZED_KEYS;
-use ::USER_DESTINATIONS_STORAGE_RAW;
-use ::USER_DESTINATIONS_STORAGE_PROVIDERS;
+use USER_DESTINATIONS_AUTHORIZED_KEYS;
+use USER_DESTINATIONS_STORAGE_PROVIDERS;
+use USER_DESTINATIONS_STORAGE_RAW;
 
 pub fn handle_raw_submission(name: &str, pub_key: &str, admin: bool) -> Result<(), EnokeysError> {
     let raw_storage: &PathBuf = if admin {
@@ -34,9 +34,16 @@ pub fn handle_raw_submission(name: &str, pub_key: &str, admin: bool) -> Result<(
     Ok(())
 }
 
-pub fn handle_submission(provider: &str, user_name: &str, name: &str, admin: bool) -> Result<(), EnokeysError> {
+pub fn handle_submission(
+    provider: &str,
+    user_name: &str,
+    name: &str,
+    admin: bool,
+) -> Result<(), EnokeysError> {
     if provider.is_empty() || user_name.is_empty() {
-        return Err(EnokeysError::InvalidData("username or service empty".to_string()));
+        return Err(EnokeysError::InvalidData(
+            "username or service empty".to_string(),
+        ));
     }
     let user_name = USERNAME_REGEX.replace_all(user_name, "");
     let name = USERNAME_REGEX.replace_all(name, " ");
@@ -56,7 +63,11 @@ pub fn handle_submission(provider: &str, user_name: &str, name: &str, admin: boo
     Ok(())
 }
 
-fn generate_authorized_key_file(authorized_keys_file_name: &PathBuf, providers_storage_file_name: &PathBuf, raw_storage_file_name: &PathBuf) -> Result<(), EnokeysError> {
+fn generate_authorized_key_file(
+    authorized_keys_file_name: &PathBuf,
+    providers_storage_file_name: &PathBuf,
+    raw_storage_file_name: &PathBuf,
+) -> Result<(), EnokeysError> {
     let mut authorized_keys_file = File::create(&authorized_keys_file_name)?;
     let mut storage_file = OpenOptions::new()
         .read(true)
@@ -71,7 +82,7 @@ fn generate_authorized_key_file(authorized_keys_file_name: &PathBuf, providers_s
     let mut path = dirs::home_dir().unwrap();
     path.push(".ssh");
     path.push("id_ed25519.pub");
-    println!("Loading SSH-pubkeyfile {:?}",path);
+    println!("Loading SSH-pubkeyfile {:?}", path);
     if let Ok(mut deploy_key_file) = File::open(path) {
         deploy_key_file.read_to_string(&mut deploy_key)?;
         write!(authorized_keys_file, "{}", &deploy_key)?
@@ -82,39 +93,61 @@ fn generate_authorized_key_file(authorized_keys_file_name: &PathBuf, providers_s
     if let Ok(mut raw_keys_file) = File::open(&raw_storage_file_name) {
         raw_keys_file.read_to_string(&mut raw_keys)?;
         match PublicKey::parse(&raw_keys) {
-            Ok(key) => {
-                match &key.comment {
-                    Some(ref comment) => {
-                        let comment = USERNAME_REGEX.replace_all(&comment, "_");
-                        let line = format!("{} {} {}\n", key.keytype(), base64::encode(&key.data()), &comment[0..min(comment.len(), 100)]);
-                        write!(authorized_keys_file, "{}", &line)?
-                    },
-                    None => writeln!(authorized_keys_file, "{} {}", key.keytype(), base64::encode(&key.data()))?
+            Ok(key) => match &key.comment {
+                Some(ref comment) => {
+                    let comment = USERNAME_REGEX.replace_all(&comment, "_");
+                    let line = format!(
+                        "{} {} {}\n",
+                        key.keytype(),
+                        base64::encode(&key.data()),
+                        &comment[0..min(comment.len(), 100)]
+                    );
+                    write!(authorized_keys_file, "{}", &line)?
                 }
+                None => writeln!(
+                    authorized_keys_file,
+                    "{} {}",
+                    key.keytype(),
+                    base64::encode(&key.data())
+                )?,
             },
-            Err(e) => println!("Failed to parse PublicKey: {:?}", e)
+            Err(e) => println!("Failed to parse PublicKey: {:?}", e),
         }
     }
 
     // append keys from providers
     storage_file.read_to_string(&mut storage_file_content)?;
-    for line in storage_file_content.split('\n').filter(|&i|!i.is_empty()).filter(|&s|&s[0..1]!="#") {
+    for line in storage_file_content
+        .split('\n')
+        .filter(|&i| !i.is_empty())
+        .filter(|&s| &s[0..1] != "#")
+    {
         let entry = line.split(':').collect::<Vec<&str>>();
         let user_keys = scraper::fetch(entry[1], entry[0])?;
         for key in user_keys {
             println!("parsing key: {}", &key);
             match PublicKey::parse(&key) {
-                Ok(key) => {
-                    match &key.comment {
-                        Some(ref comment) => {
-                            let comment = USERNAME_REGEX.replace_all(&comment, " ");
-                            let line = format!("{} {} {}_({}@{})\n", key.keytype(), base64::encode(&key.data()), &comment[0..min(comment.len(), 100)], entry[1], entry[0]);
-                            write!(authorized_keys_file, "{}", &line)?
-                        },
-                        None => writeln!(authorized_keys_file, "{} {}", key.keytype(), base64::encode(&key.data()))?
+                Ok(key) => match &key.comment {
+                    Some(ref comment) => {
+                        let comment = USERNAME_REGEX.replace_all(&comment, " ");
+                        let line = format!(
+                            "{} {} {}_({}@{})\n",
+                            key.keytype(),
+                            base64::encode(&key.data()),
+                            &comment[0..min(comment.len(), 100)],
+                            entry[1],
+                            entry[0]
+                        );
+                        write!(authorized_keys_file, "{}", &line)?
                     }
+                    None => writeln!(
+                        authorized_keys_file,
+                        "{} {}",
+                        key.keytype(),
+                        base64::encode(&key.data())
+                    )?,
                 },
-                Err(e) => println!("Failed to parse PublicKey: {:?}", e)
+                Err(e) => println!("Failed to parse PublicKey: {:?}", e),
             }
         }
     }
@@ -122,8 +155,16 @@ fn generate_authorized_key_file(authorized_keys_file_name: &PathBuf, providers_s
 }
 
 pub fn generate_authorized_key_files() -> Result<(), EnokeysError> {
-    generate_authorized_key_file(&ADMIN_DESTINATIONS_AUTHORIZED_KEYS, &ADMIN_DESTINATIONS_STORAGE_PROVIDERS, &ADMIN_DESTINATIONS_STORAGE_RAW)?;
-    generate_authorized_key_file(&USER_DESTINATIONS_AUTHORIZED_KEYS, &USER_DESTINATIONS_STORAGE_PROVIDERS, &USER_DESTINATIONS_STORAGE_RAW)?;
+    generate_authorized_key_file(
+        &ADMIN_DESTINATIONS_AUTHORIZED_KEYS,
+        &ADMIN_DESTINATIONS_STORAGE_PROVIDERS,
+        &ADMIN_DESTINATIONS_STORAGE_RAW,
+    )?;
+    generate_authorized_key_file(
+        &USER_DESTINATIONS_AUTHORIZED_KEYS,
+        &USER_DESTINATIONS_STORAGE_PROVIDERS,
+        &USER_DESTINATIONS_STORAGE_RAW,
+    )?;
     Ok(())
 }
 
@@ -131,10 +172,10 @@ pub fn load_deploy_keypair() -> Result<(), EnokeysError> {
     let mut path = dirs::home_dir().unwrap();
     path.push(".ssh");
     path.push("id_ed25519");
-    println!("Loading SSH-keyfile {:?}",path);
+    println!("Loading SSH-keyfile {:?}", path);
     // TODO: User-configable ssh key
     match File::open(path) {
         Ok(_) => Ok(()),
-        Err(e) => Err(EnokeysError::IOError(e))
+        Err(e) => Err(EnokeysError::IOError(e)),
     }
 }
