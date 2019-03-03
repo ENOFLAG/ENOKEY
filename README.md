@@ -3,8 +3,11 @@
 [![Build Status](https://travis-ci.org/ENOFLAG/ENOKEY.svg?branch=master)](https://travis-ci.org/ENOFLAG/ENOKEY)
 [![](https://tokei.rs/b1/github/ENOFLAG/ENOKEY)](https://github.com/ENOFLAG/ENOKEY)
 
+# Introduction
 
-# Docker
+Organizing and provisioning numerous SSH-keys (e.g. for a CTF) is a tedious and error prone task. This tool automates this task by providing a web-interface for users and a simple deploy scripts for admins.
+
+# Deploy using Docker
 
 ENOKEY is configured with environment variables. Here is an example using docker-compose.yml:
 ```
