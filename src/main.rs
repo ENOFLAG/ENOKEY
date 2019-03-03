@@ -281,9 +281,11 @@ fn main() {
         .mount("/", routes![index_post, index_get, deploy_get, deploy_post, favicon])
         .attach(Template::fairing())
         .attach(AdHoc::on_response("Security Headers", |_, resp| {
-            resp.adjoin_raw_header("x-xss-protection", "1");
-            resp.adjoin_raw_header("x-frame-options", "SAMEORIGIN");
+            resp.adjoin_raw_header("X-XSS-Protection", "1; mode=block");
+            resp.adjoin_raw_header("X-Frame-Options", "sameorigin");
             resp.adjoin_raw_header("Content-Security-Policy", "default-src 'self'");
+            resp.adjoin_raw_header("X-Content-Type-Options", "nosniff"); // Disables content sniffing for older browsers
+            resp.adjoin_raw_header("Referrer-Policy", "no-referrer-when-downgrade"); // won't send a referrer when going from https to http
         }))
         .launch();
 }
