@@ -13,4 +13,4 @@ chmod 600 ~/.ssh/id_ed25519
 ssh-keygen -y -f ~/.ssh/id_ed25519 |awk '{print $1" "$2" enokey@docker"}'> ~/.ssh/id_ed25519.pub
 chmod 644 ~/.ssh/id_ed25519.pub
 
-exec "$@"
+exec "$@" --admin-servers "$ADMIN_SERVERS" --admin-psk "$ADMIN_PSK" --user-servers "$USER_SERVERS" --user-psk "$USER_PSK"
