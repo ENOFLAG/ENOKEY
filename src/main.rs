@@ -245,12 +245,11 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
     let mut opts = Options::new();
-    opts.optflag(
-        "n",
-        "dry-run",
-        "Do not push the generated authorized_key file",
-    );
     opts.optflag("h", "help", "Print this help menu");
+    opts.optopt("a", "admin-servers", "Set the destinations (remote server) for the admin group", "ADMIN_SERVERS");
+    opts.optopt("p", "admin-psk", "Set the pre-shared key to add keys the admin group", "ADMIN_PSK");
+    opts.optopt("u", "user-servers", "Set the destinations (remote server) for the user group", "USER_SERVERS");
+    opts.optopt("q", "user-psk", "Set the pre-shared key to add keys the user group", "USER_PSK");
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -264,33 +263,29 @@ fn main() {
         return;
     }
 
-    if matches.opt_present("n") {
-        eprintln!("dry mode is currently not supported");
-        std::process::exit(1);
-    }
-
-    let admin_env = match env::var("SERVER_ADMIN") {
-        Ok(admin) => parse_destinations(&admin),
-        Err(e) => {
-            println!("Warning: SERVER_ADMIN not set. ({})", e);
-            Ok(vec![])
-        }
-    };
-
-    let user_env = match env::var("SERVER_USER") {
-        Ok(admin) => parse_destinations(&admin),
-        Err(e) => {
-            println!("Warning: SERVER_USER not set. ({})", e);
-            Ok(vec![])
-        }
-    };
-
     {
         let config = &mut *CONFIG.lock().unwrap();
+
+        let admin_env = match matches.opt_str("a") {
+            Some(admin) => parse_destinations(&admin),
+            None => {
+                println!("Warning: No admin servers set");
+                Ok(vec!())
+            }
+        };
+
+        let user_env = match matches.opt_str("u") {
+            Some(user) => parse_destinations(&user),
+            None => {
+                println!("Warning: No user servers set");
+                Ok(vec!())
+            }
+        };
+
         config.user_destinations = match user_env {
             Ok(user_env) => user_env.clone(),
             Err(e) => {
-                println!("Could not parse SERVER_USER {:?}", e);
+                println!("Could not parse user servers: {:?}", e);
                 return;
             }
         };
@@ -298,7 +293,7 @@ fn main() {
         config.admin_destinations = match admin_env {
             Ok(admin_env) => admin_env.clone(),
             Err(e) => {
-                println!("Could not parse SERVER_ADMIN {:?}", e);
+                println!("Could not parse admin servers: {:?}", e);
                 return;
             }
         };
@@ -307,13 +302,13 @@ fn main() {
             .admin_destinations
             .extend(config.user_destinations.iter().cloned());
 
-        config.user_psk = env::var("PSK_USER").unwrap_or_else(|e| {
-            println!("Warning: PSK_USER not set. {:?}", e);
+        config.user_psk = matches.opt_str("q").unwrap_or_else(||{
+            println!("Warning: User PSK not set.");
             "default".to_string()
         });
 
-        config.admin_psk = env::var("PSK_ADMIN").unwrap_or_else(|e| {
-            println!("Warning: PSK_ADMIN not set. {:?}", e);
+        config.admin_psk = matches.opt_str("p").unwrap_or_else(||{
+            println!("Warning: Admin PSK not set.");
             "default".to_string()
         });
 
