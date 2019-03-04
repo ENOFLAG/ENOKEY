@@ -24,6 +24,7 @@ RUN cargo +nightly build
 FROM debian:stretch-slim
 WORKDIR /enokey
 RUN mkdir keyfiles
+RUN mkdir data
 
 RUN apt-get update \
     && apt-get install -y libssl1.1 ca-certificates openssh-client --no-install-recommends \
@@ -31,6 +32,7 @@ RUN apt-get update \
 
 COPY --from=build /service/enokey/target/debug/enokey .
 COPY ./static ./static
+COPY ./templates ./templates
 COPY ./Rocket.toml ./Rocket.toml
 
 ENV ROCKET_ENV production
@@ -41,6 +43,5 @@ RUN chown -R enokey /home/enokey/
 RUN chown -R enokey .
 COPY /docker-entrypoint.sh /
 RUN chmod o+x /docker-entrypoint.sh
-USER enokey
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["./enokey"]
