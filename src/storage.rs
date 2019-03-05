@@ -65,16 +65,10 @@ pub fn handle_submission(
 
 fn generate_authorized_key_file(
     authorized_keys_file_name: &PathBuf,
-    providers_storage_file_name: &PathBuf,
-    raw_storage_file_name: &PathBuf,
+    providers_storage_file_names: &[&PathBuf],
+    raw_storage_file_names: &[&PathBuf],
 ) -> Result<(), EnokeysError> {
     let mut authorized_keys_file = File::create(&authorized_keys_file_name)?;
-    let mut storage_file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(&providers_storage_file_name)?;
-    let mut storage_file_content = String::new();
 
     // append deploy key
     let mut deploy_key = String::new();
@@ -89,54 +83,19 @@ fn generate_authorized_key_file(
     }
 
     // append raw keys
-    let mut raw_keys = String::new();
-    if let Ok(mut raw_keys_file) = File::open(&raw_storage_file_name) {
-        raw_keys_file.read_to_string(&mut raw_keys)?;
-        match PublicKey::parse(&raw_keys) {
-            Ok(key) => match &key.comment {
-                Some(ref comment) => {
-                    let comment = USERNAME_REGEX.replace_all(&comment, "_");
-                    let line = format!(
-                        "{} {} {}\n",
-                        key.keytype(),
-                        base64::encode(&key.data()),
-                        &comment[0..min(comment.len(), 100)]
-                    );
-                    write!(authorized_keys_file, "{}", &line)?
-                }
-                None => writeln!(
-                    authorized_keys_file,
-                    "{} {}",
-                    key.keytype(),
-                    base64::encode(&key.data())
-                )?,
-            },
-            Err(e) => println!("Failed to parse PublicKey: {:?}", e),
-        }
-    }
-
-    // append keys from providers
-    storage_file.read_to_string(&mut storage_file_content)?;
-    for line in storage_file_content
-        .split('\n')
-        .filter(|&i| !i.is_empty())
-        .filter(|&s| &s[0..1] != "#")
-    {
-        let entry = line.split(':').collect::<Vec<&str>>();
-        let user_keys = scraper::fetch(entry[1], entry[0])?;
-        for key in user_keys {
-            println!("parsing key: {}", &key);
-            match PublicKey::parse(&key) {
+    for raw_storage_file_name in raw_storage_file_names {
+        let mut raw_keys = String::new();
+        if let Ok(mut raw_keys_file) = File::open(&raw_storage_file_name) {
+            raw_keys_file.read_to_string(&mut raw_keys)?;
+            match PublicKey::parse(&raw_keys) {
                 Ok(key) => match &key.comment {
                     Some(ref comment) => {
-                        let comment = USERNAME_REGEX.replace_all(&comment, " ");
+                        let comment = USERNAME_REGEX.replace_all(&comment, "_");
                         let line = format!(
-                            "{} {} {}_({}@{})\n",
+                            "{} {} {}\n",
                             key.keytype(),
                             base64::encode(&key.data()),
-                            &comment[0..min(comment.len(), 100)],
-                            entry[1],
-                            entry[0]
+                            &comment[0..min(comment.len(), 100)]
                         );
                         write!(authorized_keys_file, "{}", &line)?
                     }
@@ -151,19 +110,70 @@ fn generate_authorized_key_file(
             }
         }
     }
+
+    // append keys from providers
+    for providers_storage_file_name in providers_storage_file_names {
+        let mut storage_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&providers_storage_file_name)?;
+        let mut storage_file_content = String::new();
+        storage_file.read_to_string(&mut storage_file_content)?;
+        for line in storage_file_content
+            .split('\n')
+            .filter(|&i| !i.is_empty())
+            .filter(|&s| &s[0..1] != "#")
+        {
+            let entry = line.split(':').collect::<Vec<&str>>();
+            let user_keys = scraper::fetch(entry[1], entry[0])?;
+            for key in user_keys {
+                println!("parsing key: {}", &key);
+                match PublicKey::parse(&key) {
+                    Ok(key) => match &key.comment {
+                        Some(ref comment) => {
+                            let comment = USERNAME_REGEX.replace_all(&comment, " ");
+                            let line = format!(
+                                "{} {} {}_({}@{})\n",
+                                key.keytype(),
+                                base64::encode(&key.data()),
+                                &comment[0..min(comment.len(), 100)],
+                                entry[1],
+                                entry[0]
+                            );
+                            write!(authorized_keys_file, "{}", &line)?
+                        }
+                        None => writeln!(
+                            authorized_keys_file,
+                            "{} {}",
+                            key.keytype(),
+                            base64::encode(&key.data())
+                        )?,
+                    },
+                    Err(e) => println!("Failed to parse PublicKey: {:?}", e),
+                }
+            }
+        }
+    }
     Ok(())
 }
 
 pub fn generate_authorized_key_files() -> Result<(), EnokeysError> {
     generate_authorized_key_file(
         &ADMIN_DESTINATIONS_AUTHORIZED_KEYS,
-        &ADMIN_DESTINATIONS_STORAGE_PROVIDERS,
-        &ADMIN_DESTINATIONS_STORAGE_RAW,
+        &[&ADMIN_DESTINATIONS_STORAGE_PROVIDERS],
+        &[&ADMIN_DESTINATIONS_STORAGE_RAW],
     )?;
     generate_authorized_key_file(
         &USER_DESTINATIONS_AUTHORIZED_KEYS,
-        &USER_DESTINATIONS_STORAGE_PROVIDERS,
-        &USER_DESTINATIONS_STORAGE_RAW,
+        &[
+            &ADMIN_DESTINATIONS_STORAGE_PROVIDERS,
+            &USER_DESTINATIONS_STORAGE_PROVIDERS,
+        ],
+        &[
+            &ADMIN_DESTINATIONS_STORAGE_RAW,
+            &USER_DESTINATIONS_STORAGE_RAW,
+        ],
     )?;
     Ok(())
 }

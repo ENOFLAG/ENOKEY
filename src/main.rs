@@ -125,8 +125,8 @@ struct DeployInput {
 }
 
 #[post("/", data = "<form>")]
-fn index_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String> {
-    content::Html(match form {
+fn index_post(form: Result<Form<FormInput>, FormError>) -> Template {
+    match form {
         Ok(form) => {
             let config = &*CONFIG.lock().unwrap();
             let admin = if form.authkey == config.admin_psk {
@@ -134,56 +134,68 @@ fn index_post(form: Result<Form<FormInput>, FormError>) -> content::Html<String>
             } else if &form.authkey == &config.user_psk {
                 false
             } else {
-                return content::Html(format!("Wrong AUTHKEY: {:?}", form));
+                return Template::render("insert_result", &format!("Wrong authkey: {:?}", form));
             };
             println!("authkey {} admin={}", &form.authkey, admin);
             if form.radio == FormOption::GitHub {
                 match storage::handle_submission("github", &form.github_username, &form.name, admin)
                 {
-                    Ok(_) => format!(
-                        "<b>SUCCESS added github user {:?}</b>",
-                        &form.github_username
+                    Ok(_) => Template::render(
+                        "insert_result",
+                        &format!("Successfully added github user {:?}", &form.github_username),
                     ),
-                    Err(e) => format!("ERROR: {:?}", e),
+                    Err(e) => Template::render("insert_result", &format!("ERROR: {:?}", e)),
                 }
             } else if form.radio == FormOption::TubLab {
                 match storage::handle_submission("tublab", &form.tublab_username, &form.name, admin)
                 {
-                    Ok(_) => format!(
-                        "<b>SUCCESS added tubit gitlab user {:?}</b>",
-                        &form.tublab_username
+                    Ok(_) => Template::render(
+                        "insert_result",
+                        &format!(
+                            "Successfully added tubit gitlab user {:?}",
+                            &form.tublab_username
+                        ),
                     ),
-                    Err(e) => format!("ERROR: {:?}", e),
+                    Err(e) => Template::render("insert_result", &format!("ERROR: {:?}", e)),
                 }
             } else if form.radio == FormOption::GitLab {
                 match storage::handle_submission("gitlab", &form.gitlab_username, &form.name, admin)
                 {
-                    Ok(_) => format!(
-                        "<b>SUCCESS added gitlab.com user {:?}</b>",
-                        &form.gitlab_username
+                    Ok(_) => Template::render(
+                        "insert_result",
+                        &format!(
+                            "Successfully added gitlab.com user {:?}",
+                            &form.gitlab_username
+                        ),
                     ),
-                    Err(e) => format!("ERROR: {:?}", e),
+                    Err(e) => Template::render("insert_result", &format!("ERROR: {:?}", e)),
                 }
             } else if form.radio == FormOption::EnoLab {
                 match storage::handle_submission("enolab", &form.enolab_username, &form.name, admin)
                 {
-                    Ok(_) => format!(
-                        "<b>SUCCESS added enoflag gitlab user {:?}</b>",
-                        &form.enolab_username
+                    Ok(_) => Template::render(
+                        "insert_result",
+                        &format!(
+                            "Successfully added enoflag gitlab user {:?}",
+                            &form.enolab_username
+                        ),
                     ),
-                    Err(e) => format!("ERROR: {:?}", e),
+                    Err(e) => Template::render("insert_result", &format!("ERROR: {:?}", e)),
                 }
             } else if form.radio == FormOption::PubKey {
                 match storage::handle_raw_submission(&form.name, &form.pub_key, admin) {
-                    Ok(_) => format!("<b>SUCCESS added raw pubkey {:?}</b>", &form.pub_key),
-                    Err(e) => format!("ERROR: {:?}", e),
+                    Ok(_) => Template::render(
+                        "insert_result",
+                        &format!("Successfully added raw pubkey{:?}", &form.pub_key),
+                    ),
+                    Err(e) => Template::render("insert_result", &format!("ERROR: {:?}", e)),
                 }
             } else {
-                format!("ERROR: {:?}", form)
+                Template::render("insert_result", &format!("ERROR: {:?}", form))
             }
         }
-        Err(e) => format!("Invalid form input: {:?}", e),
-    })
+        Err(e) => Template::render("insert_result", &format!("Invalid form input: {:?}", e)),
+    }
 }
 
 #[get("/")]
@@ -246,10 +258,30 @@ fn main() {
     let program = args[0].clone();
     let mut opts = Options::new();
     opts.optflag("h", "help", "Print this help menu");
-    opts.optopt("a", "admin-servers", "Set the destinations (remote server) for the admin group", "ADMIN_SERVERS");
-    opts.optopt("p", "admin-psk", "Set the pre-shared key to add keys the admin group", "ADMIN_PSK");
-    opts.optopt("u", "user-servers", "Set the destinations (remote server) for the user group", "USER_SERVERS");
-    opts.optopt("q", "user-psk", "Set the pre-shared key to add keys the user group", "USER_PSK");
+    opts.optopt(
+        "a",
+        "admin-servers",
+        "Set the destinations (remote server) for the admin group",
+        "ADMIN_SERVERS",
+    );
+    opts.optopt(
+        "p",
+        "admin-psk",
+        "Set the pre-shared key to add keys the admin group",
+        "ADMIN_PSK",
+    );
+    opts.optopt(
+        "u",
+        "user-servers",
+        "Set the destinations (remote server) for the user group",
+        "USER_SERVERS",
+    );
+    opts.optopt(
+        "q",
+        "user-psk",
+        "Set the pre-shared key to add keys the user group",
+        "USER_PSK",
+    );
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -270,7 +302,7 @@ fn main() {
             Some(admin) => parse_destinations(&admin),
             None => {
                 println!("Warning: No admin servers set");
-                Ok(vec!())
+                Ok(vec![])
             }
         };
 
@@ -278,7 +310,7 @@ fn main() {
             Some(user) => parse_destinations(&user),
             None => {
                 println!("Warning: No user servers set");
-                Ok(vec!())
+                Ok(vec![])
             }
         };
 
@@ -301,13 +333,29 @@ fn main() {
         config
             .admin_destinations
             .extend(config.user_destinations.iter().cloned());
+        println!(
+            "admin destinations: {:?}",
+            &config
+                .admin_destinations
+                .iter()
+                .map(|d| d.destination_name.clone())
+                .collect::<String>()
+        );
+        println!(
+            "user destinations: {:?}",
+            &config
+                .user_destinations
+                .iter()
+                .map(|d| d.destination_name.clone())
+                .collect::<String>()
+        );
 
-        config.user_psk = matches.opt_str("q").unwrap_or_else(||{
+        config.user_psk = matches.opt_str("q").unwrap_or_else(|| {
             println!("Warning: User PSK not set.");
             "default".to_string()
         });
 
-        config.admin_psk = matches.opt_str("p").unwrap_or_else(||{
+        config.admin_psk = matches.opt_str("p").unwrap_or_else(|| {
             println!("Warning: Admin PSK not set.");
             "default".to_string()
         });
@@ -338,7 +386,6 @@ fn parse_destinations(input: &str) -> Result<Vec<Destination>, EnokeysError> {
         return Ok(vec![]);
     }
     let entries: Vec<&str> = input.split(",").collect();
-    println!("{:?}", &entries);
     let mut destinations = vec![];
     for entry in entries {
         let split: Vec<&str> = entry.split('@').collect();
