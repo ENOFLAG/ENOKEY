@@ -85,29 +85,9 @@ fn generate_authorized_key_file(
     // append raw keys
     for raw_storage_file_name in raw_storage_file_names {
         let mut raw_keys = String::new();
-        if let Ok(mut raw_keys_file) = File::open(&raw_storage_file_name) {
+        if let Ok(mut raw_keys_file) = File::open(raw_storage_file_name) {
             raw_keys_file.read_to_string(&mut raw_keys)?;
-            match PublicKey::parse(&raw_keys) {
-                Ok(key) => match &key.comment {
-                    Some(ref comment) => {
-                        let comment = USERNAME_REGEX.replace_all(&comment, "_");
-                        let line = format!(
-                            "{} {} {}\n",
-                            key.keytype(),
-                            base64::encode(&key.data()),
-                            &comment[0..min(comment.len(), 100)]
-                        );
-                        write!(authorized_keys_file, "{}", &line)?
-                    }
-                    None => writeln!(
-                        authorized_keys_file,
-                        "{} {}",
-                        key.keytype(),
-                        base64::encode(&key.data())
-                    )?,
-                },
-                Err(e) => println!("Failed to parse PublicKey: {:?}", e),
-            }
+            write!(authorized_keys_file, "{}", &raw_keys)?
         }
     }
 
