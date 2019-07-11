@@ -106,7 +106,13 @@ fn generate_authorized_key_file(
             .filter(|&s| &s[0..1] != "#")
         {
             let entry = line.split(':').collect::<Vec<&str>>();
-            let user_keys = scraper::fetch(entry[1], entry[0])?;
+            let user_keys = match scraper::fetch(entry[1], entry[0]) {
+                Ok(user_keys) => user_keys,
+                Err(e) => {
+                    println!("could not fetch {} ({:?})", &line, &e);
+                    continue
+                }
+            };
             for key in user_keys {
                 println!("parsing key: {}", &key);
                 match PublicKey::parse(&key) {
