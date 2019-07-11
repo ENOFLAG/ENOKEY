@@ -8,18 +8,18 @@ RUN apt-get update \
     && apt-get install -y libssl-dev pkg-config --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-RUN rustup install nightly
+RUN rustup install nightly-2019-07-09
 
 COPY ./Cargo.lock ./Cargo.lock
 COPY ./Cargo.toml ./Cargo.toml
 
-RUN cargo +nightly build
+RUN cargo +nightly-2019-07-09 build
 
 COPY ./Rocket.toml ./Rocket.toml
 COPY ./src ./src
 
 RUN touch src/main.rs
-RUN cargo +nightly build
+RUN cargo +nightly-2019-07-09 build
 
 FROM debian:stretch-slim
 WORKDIR /enokey
