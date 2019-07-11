@@ -110,7 +110,7 @@ fn generate_authorized_key_file(
                 Ok(user_keys) => user_keys,
                 Err(e) => {
                     println!("could not fetch {} ({:?})", &line, &e);
-                    continue
+                    continue;
                 }
             };
             for key in user_keys {
